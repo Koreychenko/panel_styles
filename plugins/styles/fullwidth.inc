@@ -35,6 +35,22 @@ function fullwidth_background_style_settings_form($form, $form_state) {
     '#default_value' => (isset($form['background'])) ? $form['background'] : '',
   );
 
+  $form['padding_top'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Padding top'),
+    '#description' => t('Padding top value'),
+    '#required' => FALSE,
+    '#default_value' => (isset($form['padding_top'])) ? $form['padding_top'] : '',
+  );
+
+  $form['padding_bottom'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Padding bottom'),
+    '#description' => t('Padding bottom value'),
+    '#required' => FALSE,
+    '#default_value' => (isset($form['padding_bottom'])) ? $form['padding_bottom'] : '',
+  );
+
   $form['image'] = array(
     '#type' => 'textfield',
     '#title' => t('Image field'),
@@ -72,6 +88,10 @@ function theme_fullwidth_background_render_pane($vars) {
 
   $background_color = $vars['settings']['background'];
 
+  $padding_top = isset($vars['settings']['padding_top'])?$vars['settings']['padding_top']:'';
+
+  $padding_bottom = isset($vars['settings']['padding_bottom'])?$vars['settings']['padding_bottom']:'';
+
   if ($image_style == '') {
     // If no image style is selected, use the original image.
     $image_url = $image_abs_path;
@@ -96,13 +116,25 @@ function theme_fullwidth_background_render_pane($vars) {
   }
 
   if ($background_color) {
-    $style_attributes['style'][] = 'background-color: '.$background_color;
+    $style_attributes['style'][] = 'background-color: '.$background_color .';';
+  }
+
+  if ($padding_top) {
+    $style_attributes['style'][] = 'padding-top: '.$padding_top .';';
+  }
+
+  if ($padding_bottom) {
+    $style_attributes['style'][] = 'padding-bottom: '.$padding_bottom;
   }
 
   // Add our classes to the attrubutes array, if any defined
+
+
   if ($vars['settings']['class']) {
     $style_attributes['class'] = explode(' ', $vars['settings']['class']);
   }
+
+  $style_attributes['class'][] = 'fullwidth-background-pane';
 
   $style_attributes['style'] = implode(' ',$style_attributes['style']);
 
