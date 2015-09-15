@@ -7,3 +7,145 @@ function sasta_panelst_ctools_plugin_directory($module, $plugin) {
     return 'plugins/' . $plugin;
   }
 }
+
+function sasta_panelst_sasta_panelst($styles) {
+  $styles['gray'] = array(
+    'title' => 'Белый текст на серой плашке',
+    );
+  $styles['red'] = array(
+    'title' => 'Белый текст на красной плашке',
+    );
+  $styles['black'] = array(
+    'title' => 'Белый текст на черной плашке',
+    );
+  $styles['brown'] = array(
+    'title' => 'Черный текст на бежевой плашке',
+    );
+  return $styles;
+}
+
+function sasta_panelst_form_alter(&$form, &$form_state, $form_id) {
+
+  $panels_add_content_forms = array('ctools_block_content_type_edit_form', 'ctools_custom_content_type_edit_form', 'ctools_node_content_type_edit_form');
+
+  if (in_array($form_id, $panels_add_content_forms)) {
+
+    $form_state['pane']->style = array(
+      'style' => 'fullwidth',
+      'settings' => NULL,
+    );
+  }
+}
+
+ function sasta_panelst_panels_new_pane_alter(&$pane) {
+  $pane->style = array(
+      'style' => 'fullwidth',
+      'settings' => array(
+        'style' => '',
+        'advanced' => array(
+          'background' => '',
+          'classes' => '',
+          'padding_top' => '15px',
+          'padding_bottom' => '15px',
+        )
+        ),
+    );
+ }
+
+
+function sasta_panelst_form_panels_edit_style_type_form_alter(&$form, &$form_state) {
+  $remove = array('block', 'naked', 'rounded_corners');
+  $form['style']['#title'] = 'Стиль отображения блока контента';
+  foreach ($remove as $rm) {
+    unset($form['style']['#options'][$rm]);
+  }
+
+}
+
+
+function sasta_panelst_form_fieldable_panels_panes_entity_edit_form_alter(&$form, &$form_state) {
+  $form['reusable']['reusable']['#default_value'] = FALSE;
+}
+
+function sasta_panelst_form_fieldable_panels_panes_fieldable_panels_pane_content_type_edit_form_alter(&$form, &$form_state) {
+  $form['view_mode'] = array(
+    '#type' => 'hidden',
+    '#value' => 'full',
+    );
+  $form['revision']['revision']['#default_value'] = 0;
+}
+
+
+
+function sasta_panelst_preprocess_media_thumbnail(&$variables) {
+  $variables['element']['#width'] = 180;
+  $variables['element']['#height'] = 180;
+  $variables['element']['#children'] = theme('image_style',array(
+    'style_name' => 'square_thumbnail',
+    'path' => $variables['element']['#path'],
+    'width' => 180,
+    'height' => 180));
+}
+
+function sasta_panelst_preprocess(&$variables, $hook) {
+  if ($hook == 'html') {
+    $css = '.ui-dialog.media-wrapper {z-index:2000;}';
+    drupal_add_css($css,'inline');
+  }
+}
+
+function sasta_panelst_preprocess_fieldable_panels_pane(&$vars) {
+  switch ($vars['elements']['#bundle']) {
+    case 'image':
+      $css = '.pane-bundle-image img {width: 100%; height: auto;}';
+      drupal_add_css($css,'inline');
+    break;
+    case 'item_list':
+
+      $list_style = $vars['elements']['#fieldable_panels_pane']->field_list_type['und'][0]['value'];
+
+      $vars['classes_array'][] = 'item-list-style-'.$list_style;
+      $items = array();
+      foreach (element_children($vars['content']['field_text']) as $children) {
+        $items[] = $vars['content']['field_text'][$children]['#markup'];
+      }
+      $vars['content']['field_text'] = array(
+        '#theme' => 'item_list',
+        '#items' => $items,
+        '#type' => ($list_style == 'numeric')?'ol':'ul',
+        );
+    break;
+  }
+}
+
+function sasta_panelst_preprocess_panels_ipe_toolbar(&$vars) {
+  foreach ($vars['buttons'] as $group_id => $group) {
+    foreach ($group as $button_id => $button) {
+      if ($button_id == 'panels-ipe-change-layout') {
+        unset($vars['buttons'][$group_id][$button_id]);
+      }
+      if ($button_id == 'panels-ipe-startedit') {
+      $vars['buttons'][$group_id][$button_id]['#title'] = 'Изменить страницу / Добавить элементы';
+      }
+
+    }
+  }
+}
+
+function sasta_panelst_form_panels_ipe_edit_control_form_alter(&$form, &$form_state) {
+  $form['#after_build'][] = 'sasta_panelst_remove_panelizer_buttons';
+}
+
+function sasta_panelst_remove_panelizer_buttons($form, &$form_state) {
+  global $user;
+  //if ($user->uid != 1) {
+    if (isset($form['buttons']['save_default'])) {
+      unset($form['buttons']['save_default']);
+      $form['buttons']['submit']['#value'] = t('Save');
+    }
+    if (isset($form['buttons']['revert_default'])) {
+      unset($form['buttons']['revert_default']);
+    }
+  //}
+  return $form;
+}
