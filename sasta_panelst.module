@@ -1,4 +1,14 @@
 <?php
+
+function sasta_panelst_permission() {
+  return array(
+    'administer styles' => array(
+      'title' => t('Administer my module'),
+      'description' => t('Perform administration tasks for my module.'),
+    ),
+  );
+}
+
 /**
  * Implementation of hook_ctools_plugin_directory().
  */
@@ -9,18 +19,16 @@ function sasta_panelst_ctools_plugin_directory($module, $plugin) {
 }
 
 function sasta_panelst_sasta_panelst($styles) {
-  $styles['gray'] = array(
-    'title' => 'Белый текст на серой плашке',
-    );
-  $styles['red'] = array(
-    'title' => 'Белый текст на красной плашке',
+  $styles['dark'] = array(
+    'title' => 'Темный фон',
     );
   $styles['black'] = array(
-    'title' => 'Белый текст на черной плашке',
+    'title' => 'Черный фон',
     );
-  $styles['brown'] = array(
-    'title' => 'Черный текст на бежевой плашке',
+  $styles['light'] = array(
+    'title' => 'Светлый фон',
     );
+
   return $styles;
 }
 
@@ -37,6 +45,14 @@ function sasta_panelst_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+function sasta_panelst_form_panels_edit_style_settings_form_alter(&$form, &$form_state) {
+  $form['settings']['merge_background'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Объединить фон со следующим абзацем',
+    '#default_value' => isset($form_state['conf']['merge_background'])?$form_state['conf']['merge_background']:0,
+    );
+}
+
  function sasta_panelst_panels_new_pane_alter(&$pane) {
   $pane->style = array(
       'style' => 'fullwidth',
@@ -45,8 +61,8 @@ function sasta_panelst_form_alter(&$form, &$form_state, $form_id) {
         'advanced' => array(
           'background' => '',
           'classes' => '',
-          'padding_top' => '15px',
-          'padding_bottom' => '15px',
+          'padding_top' => '',
+          'padding_bottom' => '',
         )
         ),
     );
@@ -65,6 +81,7 @@ function sasta_panelst_form_panels_edit_style_type_form_alter(&$form, &$form_sta
 
 function sasta_panelst_form_fieldable_panels_panes_entity_edit_form_alter(&$form, &$form_state) {
   $form['reusable']['reusable']['#default_value'] = FALSE;
+  $form['reusable']['#access'] = false;
 }
 
 function sasta_panelst_form_fieldable_panels_panes_fieldable_panels_pane_content_type_edit_form_alter(&$form, &$form_state) {
@@ -73,6 +90,7 @@ function sasta_panelst_form_fieldable_panels_panes_fieldable_panels_pane_content
     '#value' => 'full',
     );
   $form['revision']['revision']['#default_value'] = 0;
+  $form['reusable']['#access'] = false;
 }
 
 
@@ -80,9 +98,10 @@ function sasta_panelst_form_fieldable_panels_panes_fieldable_panels_pane_content
 function sasta_panelst_preprocess_media_thumbnail(&$variables) {
   $variables['element']['#width'] = 180;
   $variables['element']['#height'] = 180;
+  $path = $variables['element']['#item']['uri'];
   $variables['element']['#children'] = theme('image_style',array(
     'style_name' => 'square_thumbnail',
-    'path' => $variables['element']['#path'],
+    'path' => $path,
     'width' => 180,
     'height' => 180));
 }
@@ -95,6 +114,14 @@ function sasta_panelst_preprocess(&$variables, $hook) {
 }
 
 function sasta_panelst_preprocess_fieldable_panels_pane(&$vars) {
+  drupal_add_css(drupal_get_path('module','sasta_panelst').'/sasta_panelst.css');
+  if (isset($vars['content']['title'])) {
+    if ($vars['content']['title']['#value']) {
+      $vars['content']['title']['#access'] = TRUE;
+    } else {
+      $vars['content']['title']['#access'] = FALSE;
+    }
+  }
   switch ($vars['elements']['#bundle']) {
     case 'image':
       $css = '.pane-bundle-image img {width: 100%; height: auto;}';
@@ -105,6 +132,7 @@ function sasta_panelst_preprocess_fieldable_panels_pane(&$vars) {
       $list_style = $vars['elements']['#fieldable_panels_pane']->field_list_type['und'][0]['value'];
 
       $vars['classes_array'][] = 'item-list-style-'.$list_style;
+
       $items = array();
       foreach (element_children($vars['content']['field_text']) as $children) {
         $items[] = $vars['content']['field_text'][$children]['#markup'];
@@ -127,8 +155,35 @@ function sasta_panelst_preprocess_panels_ipe_toolbar(&$vars) {
       if ($button_id == 'panels-ipe-startedit') {
       $vars['buttons'][$group_id][$button_id]['#title'] = 'Изменить страницу / Добавить элементы';
       }
-
     }
+  }
+  if ((arg(0) == 'node') && (is_numeric(arg(1)))) {
+    $vars['buttons']['panelizer-node-'.arg(1).'-page-manager'][] = array(
+      '#type' => 'link',
+      '#title' => t('Edit node'),
+      '#href' => 'node/'.arg(1).'/edit',
+      '#attributes' => array(
+        'class' => array(
+          'panels-ipe-pseudobutton',
+          )
+        ),
+      '#prefix' => '<div class="panels-ipe-pseudobutton-container">',
+      '#suffix' => '</div>',
+      );
+  }
+  if ((arg(0) == 'taxonomy') && (is_numeric(arg(2)))) {
+    $vars['buttons']['panelizer-taxonomy-term-'.arg(2).'-page-manager'][] = array(
+      '#type' => 'link',
+      '#title' => t('Edit taxonomy term'),
+      '#href' => 'taxonomy/term/'.arg(2).'/edit',
+      '#attributes' => array(
+        'class' => array(
+          'panels-ipe-pseudobutton',
+          )
+        ),
+      '#prefix' => '<div class="panels-ipe-pseudobutton-container">',
+      '#suffix' => '</div>',
+      );
   }
 }
 
@@ -148,4 +203,281 @@ function sasta_panelst_remove_panelizer_buttons($form, &$form_state) {
     }
   //}
   return $form;
+}
+
+
+function sasta_panelst_theme($existing, $type, $theme, $path) {
+  return array(
+    'field__field_columns_text' => array(
+      'render element' => 'content',
+      'base hook' => 'field',
+      'template' => 'sasta-panelst-column-text',
+      ),
+    'fieldable_panels_pane' => array(
+      'render element' => 'elements',
+      'template' => 'sasta-panelst-fieldable-panels-pane',
+      ),
+    'panels_default_style_render_region' => array(
+      'render element' => 'elements',
+      'function' => 'theme_sasta_panelst_panels_default_style_render_region',
+      ),
+    );
+}
+
+function sasta_panelst_panels_ipe_region_links_alter(&$links, $context) {
+  foreach ($links as $name => &$link) {
+    if ($name == 'add-pane') {
+      $link['href'] = $link['href'].'/fielded-panes';
+      $link['attributes']['class'] = array(
+        'use-ajax', 'panels-modal-add-category', 'add'
+        );
+    }
+  }
+}
+
+function sasta_panelst_preprocess_panels_add_content_link(&$vars) {
+//$vars['icon'] = 'https://habracdn.net/habr/images/1442330047/logo.svg';
+
+$images = array();
+
+$images = module_invoke_all('panel_modal_links_images',$images);
+
+if ($vars['content_type']['type_name'] == 'fieldable_panels_pane') {
+
+    if (isset($images[$vars['content_type']['bundle']])) {
+      $image = '<img src="'.$images[$vars['content_type']['bundle']].'">';
+
+      $vars['icon_text_button'] = l($image.'<span>'.$vars['title'].'</span>',$vars['url'],array('html'=>TRUE, 'attributes' => array('class'=>array('use-ajax','panels-modal-add-config'))));
+    }
+
+}
+}
+
+function sasta_panelst_panel_modal_links_images($images) {
+
+  $path = drupal_get_path('module','sasta_panelst') . '/images';
+
+  $images['text_image_left'] = $path . '/text_image_left.png';
+
+  $images['image'] = $path . '/image.png';
+
+  $images['item_list'] = $path . '/item_list.png';
+
+  $images['multiple_columns_text'] = $path . '/multiple_columns_text.png';
+
+  $images['table_block'] = $path . '/table_block.png';
+
+  $images['title_dash_text'] = $path . '/title_dash_text.png';
+
+  $images['photo_gallery'] = $path . '/photo_gallery.png';
+
+  return $images;
+
+}
+
+function sasta_panelst_preprocess_panels_add_content_modal(&$vars) {
+  $vars['column_count'] = 3;
+  drupal_add_css(drupal_get_path('module','sasta_panelst').'/css/sasta_panelst_admin.css');
+  drupal_add_js(drupal_get_path('module','sasta_panelst').'/js/sasta_panelst_admin.js');
+}
+
+function theme_sasta_panelst_panels_default_style_render_region($vars) {
+  $output = '';
+  $flag = 0;
+  foreach ($vars['display']->content as $id => $panel_pane) {
+    if (((isset($panel_pane->style['settings']['merge_background'])) && ($panel_pane->style['settings']['merge_background'])) && !($flag)) {
+      $flag = 2;
+      if ($panel_pane->style['settings']['advanced']['image']) {
+        $image_url = file_load($panel_pane->style['settings']['advanced']['image']);
+      if ($image_url) {
+        $styles['style'][] = 'background-image: url('.file_create_url($image_url->uri).');';
+         $styles['style'][] = 'background-repeat: repeat-x repeat-y;';
+      }
+      }
+      if ($panel_pane->style['settings']['style']) {
+        $styles['class'][] = 'sasta_panelst_style_'.$panel_pane->style['settings']['style'];
+      }
+
+      if ($panel_pane->style['settings']['advanced']['padding_top']) {
+        $styles['style'][] = 'padding-top: '.$panel_pane->style['settings']['advanced']['padding_top'] .';';
+      } else {
+        $styles['style'][] = 'padding-top: '. variable_get('elements_padding_top','15px') .';';
+      }
+
+      if ($panel_pane->style['settings']['advanced']['padding_bottom']) {
+        $styles['style'][] = 'padding-bottom: '.$panel_pane->style['settings']['advanced']['padding_bottom'] .';';
+      } else {
+        $styles['style'][] = 'padding-bottom: '. variable_get('elements_padding_bottom','15px') .';';
+      }
+
+      if ($panel_pane->style['settings']['advanced']['background']) {
+        $styles['style'][] = 'background-color: '.$panel_pane->style['settings']['advanced']['background'] .';';
+      }
+
+      $styles['class'][] = 'merged-background';
+
+      $output .= '<div class="'.implode(' ',$styles['class']).'" style="'.implode(' ',$styles['style']).'">';
+    }
+    if (((isset($panel_pane->style['settings']['merge_background'])) && ($panel_pane->style['settings']['merge_background'])) && ($flag == 1)) {
+      $flag = 2;
+    }
+    if (isset($vars['panes'][$id])) {
+      $output .= $vars['panes'][$id];
+    }
+
+    if (($flag) && ($flag != 2)) {
+      $output .= '</div>';
+      $flag = 0;
+    }
+    if ($flag == 2) {
+      $flag = 1;
+    }
+  }
+  //$output .= implode('', $vars['panes']);
+  return $output;
+}
+
+
+/**
+ * Implements hook_variable_info().
+ */
+function sasta_panelst_variable_info($options) {
+
+  // This is the very minimum we need, some descriptive name.
+
+  $variable['elements_padding_top'] = array(
+    'title' => t('Elements panel pane default padding top'),
+    'type' => 'string',
+    'default' => '15px',
+  );
+
+  $variable['elements_padding_bottom'] = array(
+    'title' => t('Elements panel pane default padding bottom'),
+    'type' => 'string',
+    'default' => '15px',
+  );
+
+  return $variable;
+}
+
+function ipe_layout_base_settings_form(&$form, &$form_state, $settings = array()) {
+
+  $form['row_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Row type'),
+    '#options' => array(
+      'fullwidth' => t('Full width'),
+      'container' => t('With paddings'),
+      ),
+    '#default_value' => isset($settings['row_type'])?$settings['row_type']:'',
+  );
+
+  $form['paddings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Paddings settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['paddings']['padding_top'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Row padding top'),
+    '#default_value' => isset($settings['padding_top'])?$settings['padding_top']:'',
+    );
+
+  $form['paddings']['padding_bottom'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Row padding bottom'),
+    '#default_value' => isset($settings['padding_bottom'])?$settings['padding_bottom']:'',
+    );
+
+  $form['paddings']['padding_left'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Row padding left'),
+    '#default_value' => isset($settings['padding_left'])?$settings['padding_left']:'',
+    );
+
+  $form['paddings']['padding_right'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Row padding right'),
+    '#default_value' => isset($settings['padding_right'])?$settings['padding_right']:'',
+    );
+
+  $form['height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Height'),
+    '#default_value' => isset($settings['height'])?$settings['height']:'',
+    '#description' => t('Height in pixels. I.e. 200'),
+  );
+
+  $form['colors'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Colors settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['colors']['text_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Text Color'),
+    '#attributes' => array('class'=>array('spectrum')),
+    '#default_value' => isset($settings['text_color'])?$settings['text_color']:'',
+    );
+
+  $form['colors']['background_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Background Color'),
+    '#attributes' => array('class'=>array('spectrum')),
+    '#default_value' => isset($settings['background_color'])?$settings['background_color']:'',
+    );
+
+  $form['colors']['background_image'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Background Image'),
+      '#required' => FALSE,
+      '#upload_location' => 'public://',
+      '#upload_validators' => array(
+        'file_validate_is_image' => array(),
+        'file_validate_extensions' => array('png gif jpg jpeg'),
+        'file_validate_size' => array(5 * 1024 * 1024),
+      ),
+      '#default_value' => isset($settings['background_image'])?$settings['background_image']:'',
+    );
+
+  $form['colors']['background_repeat'] = array(
+    '#type' => 'select',
+    '#title' => t('Background Repeat'),
+    '#options' => array(
+      'no-repeat' => t('No repeat'),
+      'fullsize' => t('Stretch fullsize'),
+      'repeat' => t('Repeat')
+      ),
+    '#default_value' => isset($settings['background_repeat'])?$settings['background_repeat']:'',
+    );
+
+  $form['colors']['background_position'] = array(
+    '#type' => 'select',
+    '#title' => t('Background Position'),
+    '#options' => array(
+      'top-center' => t('Top Center'),
+      'middle-center' => t('Middle Center'),
+      'bottom-center' => t('Bottom Center'),
+      'left-top' => t('Left top'),
+      'left-bottom' => t('Left bottom'),
+      'right-top' => t('Right top'),
+      'right-bottom' => t('Right bottom'),
+      ),
+    '#default_value' => isset($settings['background_position'])?$settings['background_position']:'',
+    );
+
+  $form['colors']['background_stretch'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Stretch background'),
+    '#default_value' => isset($settings['background_stretch'])?$settings['background_stretch']:0,
+    );
+  $form['colors']['background_parallax'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Parallax background'),
+    '#default_value' => isset($settings['background_parallax'])?$settings['background_parallax']:0,
+    );
 }

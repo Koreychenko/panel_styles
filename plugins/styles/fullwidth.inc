@@ -12,11 +12,13 @@ $plugin = array(
     'fullwidth_background_picture_style' => array(
       'variables' => array(
         'content' => NULL,
+        'type' => NULL,
         'style_attributes' => array(),
         'admin_links' => NULL,
         'pane_prefix' => NULL,
         'pane_suffix' => NULL,
         'title' => NULL,
+        'inner_classes_array' => NULL,
       ),
       'path' => drupal_get_path('module', 'sasta_panelst') . '/plugins/styles/theme',
       'template' => 'fullwidth-background',
@@ -31,88 +33,41 @@ $plugin = array(
 /**
  * Settings form callback.
  */
-function fullwidth_background_style_settings_form($form, $form_state) {
+function fullwidth_background_style_settings_form(&$form, &$form_state) {
 
-  $form_values = $form;
+  $settings = array();
 
-  $styles = array();
+  $settings['row_type'] = isset($form['row_type'])?$form['row_type']:'';
 
-  $styles = module_invoke_all('sasta_panelst', $styles);
+  $settings['padding_left'] = $form['paddings']['padding_left'];
+  $settings['padding_right'] = $form['paddings']['padding_right'];
+  $settings['padding_top'] = $form['paddings']['padding_top'];
+  $settings['padding_bottom'] = $form['paddings']['padding_bottom'];
+  $settings['height'] = $form['height'];
+  $settings['background_color'] = $form['colors']['background_color'];
+  $settings['text_color'] = $form['colors']['text_color'];
+  $settings['background_image'] = $form['colors']['background_image'];
+  $settings['background_repeat'] = $form['colors']['background_repeat'];
+  $settings['background_position'] = $form['colors']['background_position'];
 
-  if (!empty($styles)) {
-    $style_options = array('0' => 'Не выбрано');
+  ipe_layout_base_settings_form($form, $form_state,$settings);
 
-    foreach ($styles as $id => $title) {
-      $style_options[$id] = $title['title'];
-    }
-    $form['style'] = array(
-      '#type' => 'select',
-      '#title' => 'Выберите стиль',
-      '#options' => $style_options,
-      '#default_value' => ($form_values['style']) ? $form_values['style'] : 0,
-      );
-  }
-
-
-
-  $form['advanced'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Дополнительные настройки',
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-    'tree' => FALSE,
-    );
-
-
-
-  $form['advanced']['background'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Background color'),
-    '#description' => t('Enter the background color in HEX format. You may use substitutions in this field.'),
-    '#required' => FALSE,
-    '#default_value' => (isset($form_values['advanced']['background'])) ? $form_values['advanced']['background'] : '',
-  );
-
-  $form['advanced']['padding_top'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Padding top'),
-    '#description' => t('Padding top value'),
-    '#required' => FALSE,
-    '#default_value' => (isset($form_values['advanced']['padding_top'])) ? $form_values['advanced']['padding_top'] : '15px',
-  );
-
-  $form['advanced']['padding_bottom'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Padding bottom'),
-    '#description' => t('Padding bottom value'),
-    '#required' => FALSE,
-    '#default_value' => (isset($form_values['advanced']['padding_bottom'])) ? $form_values['advanced']['padding_bottom'] : '15px',
-  );
-
-
-
-  if ((isset($form_values['advanced']['image'])) && ($form_values['advanced']['image'])) {
-    $form['advanced']['image'] = array('#type' => 'hidden', '#value' => $form_values['advanced']['image']);
-  } else {
-    $form['advanced']['image'] = array(
-      '#type' => 'managed_file',
-      '#title' => t('Background Image'),
-      '#required' => FALSE,
-      '#default_value' => '',
-      '#upload_location' => 'public://',
-      '#upload_validators' => array(
-        'file_validate_is_image' => array(),
-        'file_validate_extensions' => array('png gif jpg jpeg'),
-        'file_validate_size' => array(1 * 1024 * 1024),
+  $form['header_position'] = array(
+    '#type' => 'select',
+    '#options' => array(
+      'left' => t('Left'),
+      'center' => t('Center'),
+      'right' => t('Right'),
       ),
+    '#title' => t('Header position'),
+    '#default_value' => isset($form['header_position'])?$form['header_position']:'left',
     );
-  }
 
-  $form['advanced']['class'] = array(
+  $form['class'] = array(
     '#type' => 'textfield',
     '#title' => t('CSS Classes'),
     '#description' => t('Enter CSS classes for this style. Separate multiple classes by spaces.'),
-    '#default_value' => (isset($form_values['advanced']['class'])) ? $form_values['advanced']['class'] : '',
+    '#default_value' => (isset($form['class'])) ? $form['class'] : '',
   );
 
   $form['#submit'][] = 'fullwidth_background_style_settings_form_submit';
@@ -121,14 +76,8 @@ function fullwidth_background_style_settings_form($form, $form_state) {
 }
 
 function fullwidth_background_style_settings_form_submit(&$form, &$form_state) {
-  if ($form_state['image']) {
-    if (is_object($form_state['image'])) {
-      $file = file_load($form_state['image']);
-      $file->status = FILE_STATUS_PERMANENT;
-      file_save($file);
-      $form_state['image'] = $file->fid;
-    }
-  }
+
+
 }
 
 /**
@@ -136,64 +85,90 @@ function fullwidth_background_style_settings_form_submit(&$form, &$form_state) {
  */
 function theme_fullwidth_background_render_pane($vars) {
 
-  $background_color = '';
+  $inner_classes_array = array();
 
-  if (isset($vars['settings']['advanced'])) {
-    if (isset($vars['settings']['advanced']['background'])) {
-      $background_color = $vars['settings']['advanced']['background'];
-    }
-  }
+  $background_color = '';
 
   $style = '';
 
-  if (isset($vars['settings']['style'])) {
-    $style = $vars['settings']['style'];
+  $styles = array('class'=>array(),'style'=>array());
+
+  if (isset($vars['settings']['paddings']['padding_top'])) {
+    $styles['style'][] = 'padding-top:'.$vars['settings']['paddings']['padding_top'].'px!important;';
   }
 
-  $padding_top = isset($vars['settings']['advanced']['padding_top'])?$vars['settings']['advanced']['padding_top']:'';
+  if (isset($vars['settings']['paddings']['padding_bottom'])) {
+    $styles['style'][] = 'padding-bottom:'.$vars['settings']['paddings']['padding_bottom'].'px!important;';
+  }
 
-  $padding_bottom = isset($vars['settings']['advanced']['padding_bottom'])?$vars['settings']['advanced']['padding_bottom']:'';
+  if (isset($vars['settings']['paddings']['padding_left'])) {
+    $styles['style'][] = 'padding-left:'.$vars['settings']['paddings']['padding_left'].'px!important;';
+  }
 
-  $image_url = '';
+  if (isset($vars['settings']['paddings']['padding_right'])) {
+    $styles['style'][] = 'padding-right:'.$vars['settings']['paddings']['padding_right'].'px!important;';
+  }
 
-  if (isset($vars['settings']['advanced'])) {
-    if (isset($vars['settings']['advanced']['image']))
-    if ($vars['settings']['advanced']['image']) {
-      $image_url = file_load($vars['settings']['advanced']['image']);
-      if ($image_url) {
-        $image_url = file_create_url($image_url->uri);
-      }
+  if (isset($vars['settings']['colors']['background_color'])) {
+    $styles['style'][] = 'background-color:'.$vars['settings']['colors']['background_color'].'!important;';
+  }
+
+  if (isset($vars['settings']['height'])) {
+    $styles['style'][] = 'height:'.$vars['settings']['height'].'px!important;';
+    $styles['style'][] = 'overflow: hidden!important;';
+  }
+
+  if (isset($vars['settings']['colors']['text_color'])) {
+    $styles['style'][] = 'color:'.$vars['settings']['colors']['text_color'].'!important;';
+  }
+
+  if (isset($vars['settings']['colors']['background_image'])) {
+    $file = file_load($vars['settings']['colors']['background_image']);
+    if ($file) {
+      $image = file_create_url($file->uri);
+      $styles['style'][] = 'background-image: url('.$image.')!important;';
     }
   }
 
-
-  $style_attributes = array();
-  $style_attributes['style'] = array();
-
-  if ($style) {
-    $style_attributes['class'][] = 'sasta_panelst_style_'.$style;
+  if (isset($vars['settings']['colors']['background_repeat'])) {
+    switch ($vars['settings']['colors']['background_repeat']) {
+      case 'no-repeat':
+        $styles['style'][] = 'background-repeat: no-repeat!important;';
+      break;
+      case 'fullsize':
+        $styles['style'][] = 'background-repeat: no-repeat!important;';
+        $styles['style'][] = 'background-size: 100% auto!important;';
+      break;
+    }
   }
 
-  if ($image_url) {
-    $style_attributes['style'][] = 'background-image: url(' . $image_url . ');';
-    $style_attributes['style'][] = 'background-repeat: repeat-x repeat-y;';
-  }
-
-  if ($background_color) {
-    $style_attributes['style'][] = 'background-color: '.$background_color .';';
-  }
-
-  if ($padding_top) {
-    $style_attributes['style'][] = 'padding-top: '.$padding_top .';';
-  }
-
-  if ($padding_bottom) {
-    $style_attributes['style'][] = 'padding-bottom: '.$padding_bottom;
+  if (isset($vars['settings']['colors']['background_position'])) {
+    switch ($vars['settings']['colors']['background_position']) {
+      case 'top-center':
+        $styles['style'][] = 'background-position: 50% 0!important;';
+      break;
+      case 'middle-center':
+        $styles['style'][] = 'background-position: 50% 50%!important;';
+      break;
+      case 'bottom-center':
+        $styles['style'][] = 'background-position: 50% 100%!important;';
+      break;
+      case 'left-top':
+        $styles['style'][] = 'background-position: 0% 0%!important;';
+      break;
+      case 'left-bottom':
+        $styles['style'][] = 'background-position: 0% 100%!important;';
+      break;
+      case 'right-top':
+        $styles['style'][] = 'background-position: 100% 0%!important;';
+      break;
+      case 'right-bottom':
+        $styles['style'][] = 'background-position: 100% 100%!important;';
+      break;
+    }
   }
 
   // Add our classes to the attrubutes array, if any defined
-
-  $style_attributes['style'] = implode(' ',$style_attributes['style']);
 
   $content = $vars['content']->content;
 
@@ -245,25 +220,24 @@ function theme_fullwidth_background_render_pane($vars) {
           'library' => array(array('contextual', 'contextual-links')),
         ),
       );
-      $vars['classes_array'][] = 'contextual-links-region';
+
+      $inner_classes_array[] = 'contextual-links-region';
       $vars['admin_links'] = drupal_render($build);
     }
   }
 
   if (isset($vars['settings']['advanced'])) {
-    if (isset($vars['settings']['advanced']['class'])) {
-    if ($vars['settings']['advanced']['class']) {
-      $style_attributes['class'] = explode(' ', $vars['settings']['advanced']['class']);
+    if (isset($vars['settings']['class'])) {
+    if ($vars['settings']['class']) {
+      $styles['class'] = explode(' ', $vars['settings']['class']);
     }
   }
 }
 
 
-  $style_attributes['class'][] = 'fullwidth-background-pane';
+  $styles['class'][] = 'fullwidth-background-pane';
 
-  if ($links) {
-    $style_attributes['class'][] = 'contextual-links-region';
-  }
+  $inner_classes_array = implode(' ', $inner_classes_array);
 
   ctools_include('cleanstring');
 
@@ -271,16 +245,22 @@ function theme_fullwidth_background_render_pane($vars) {
   $subtype_class = $vars['content']->subtype ? 'pane-'. ctools_cleanstring($vars['content']->subtype, array('lower case' => TRUE)) : '';
 
   // Sometimes type and subtype are the same. Avoid redundant classes.
-  $style_attributes['class'][] = $type_class;
-  $style_attributes['class'][] = 'panel-pane';
+  $styles['class'][] = $type_class;
+  $styles['class'][] = 'panel-pane';
   if ($type_class != $subtype_class) {
-    $style_attributes['class'][] = $subtype_class;
+    $styles['class'][] = $subtype_class;
+  }
+
+  if (isset($vars['settings']['header_position'])) {
+    $styles['class'][] = 'header-position-'.$vars['settings']['header_position'];
   }
 
 
   return theme('fullwidth_background_picture_style', array(
+      'type' => isset($vars['settings']['row_type'])?$vars['settings']['row_type']:'fullwidth',
       'content' => $content,
-      'style_attributes' => $style_attributes,
+      'style_attributes' => $styles,
+      'inner_classes_array' => $inner_classes_array,
       'admin_links' => $vars['admin_links'],
       'title' => $vars['title'],
       'pane_prefix' => $vars['pane_prefix'],
