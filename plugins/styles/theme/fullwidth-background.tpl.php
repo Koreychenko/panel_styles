@@ -6,7 +6,7 @@
     <?php print $admin_links; ?>
   <?php endif; ?>
     <?php if ($type == 'container'): ?>
-      <div class="container">
+      <div class="pane-with-paddings">
     <?php endif; ?>
     <?php print render($content); ?>
     <?php if ($type == 'container'): ?>

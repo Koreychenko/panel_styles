@@ -9,3 +9,14 @@
   margin-left: 20px;
   margin-bottom: 20px;
 }
+
+.main-form .form-buttons {position: fixed;}
+
+.main-form .form-buttons .form-actions {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.main-form .main-form-fields {
+  padding-top: 50px;
+}

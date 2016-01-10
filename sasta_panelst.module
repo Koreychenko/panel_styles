@@ -33,14 +33,15 @@ function sasta_panelst_sasta_panelst($styles) {
 }
 
 function sasta_panelst_form_alter(&$form, &$form_state, $form_id) {
-
   $panels_add_content_forms = array('ctools_block_content_type_edit_form', 'ctools_custom_content_type_edit_form', 'ctools_node_content_type_edit_form');
 
   if (in_array($form_id, $panels_add_content_forms)) {
 
     $form_state['pane']->style = array(
       'style' => 'fullwidth',
-      'settings' => NULL,
+      'settings' => array(
+        'row_type' => 'container',
+        ),
     );
   }
 }
@@ -58,6 +59,7 @@ function sasta_panelst_form_panels_edit_style_settings_form_alter(&$form, &$form
       'style' => 'fullwidth',
       'settings' => array(
         'style' => '',
+        'row_type' => 'container',
         'advanced' => array(
           'background' => '',
           'classes' => '',
@@ -75,7 +77,6 @@ function sasta_panelst_form_panels_edit_style_type_form_alter(&$form, &$form_sta
   foreach ($remove as $rm) {
     unset($form['style']['#options'][$rm]);
   }
-
 }
 
 
@@ -85,32 +86,12 @@ function sasta_panelst_form_fieldable_panels_panes_entity_edit_form_alter(&$form
 }
 
 function sasta_panelst_form_fieldable_panels_panes_fieldable_panels_pane_content_type_edit_form_alter(&$form, &$form_state) {
+  $form['#theme'][] = 'fpp_'.$form_state['entity']->bundle.'_custom_form_tpl';
   $form['view_mode'] = array(
     '#type' => 'hidden',
     '#value' => 'full',
     );
   $form['revision']['revision']['#default_value'] = 0;
-  $form['reusable']['#access'] = false;
-}
-
-
-
-function sasta_panelst_preprocess_media_thumbnail(&$variables) {
-  $variables['element']['#width'] = 180;
-  $variables['element']['#height'] = 180;
-  $path = $variables['element']['#item']['uri'];
-  $variables['element']['#children'] = theme('image_style',array(
-    'style_name' => 'square_thumbnail',
-    'path' => $path,
-    'width' => 180,
-    'height' => 180));
-}
-
-function sasta_panelst_preprocess(&$variables, $hook) {
-  if ($hook == 'html') {
-    $css = '.ui-dialog.media-wrapper {z-index:2000;}';
-    drupal_add_css($css,'inline');
-  }
 }
 
 function sasta_panelst_preprocess_fieldable_panels_pane(&$vars) {
@@ -369,7 +350,7 @@ function ipe_layout_base_settings_form(&$form, &$form_state, $settings = array()
       'fullwidth' => t('Full width'),
       'container' => t('With paddings'),
       ),
-    '#default_value' => isset($settings['row_type'])?$settings['row_type']:'',
+    '#default_value' => isset($settings['row_type'])?$settings['row_type']:'container',
   );
 
   $form['paddings'] = array(
