@@ -131,7 +131,7 @@ function sasta_panelst_preprocess_panels_ipe_toolbar(&$vars) {
   foreach ($vars['buttons'] as $group_id => $group) {
     foreach ($group as $button_id => $button) {
       if ($button_id == 'panels-ipe-change-layout') {
-        unset($vars['buttons'][$group_id][$button_id]);
+        /*unset($vars['buttons'][$group_id][$button_id]);*/
       }
       if ($button_id == 'panels-ipe-startedit') {
       $vars['buttons'][$group_id][$button_id]['#title'] = 'Изменить страницу / Добавить элементы';
